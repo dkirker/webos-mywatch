@@ -34,24 +34,21 @@ DashboardAssistant.prototype.relaunchApp = function() {
 
 DashboardAssistant.prototype.showInfo = function(logText, open) {
 	this.controller.get('log-output').innerHTML = "<strong>" + logText + "</strong><br />" + this.controller.get('log-output').innerHTML.substr(0, 300) + "<br /><br />";
-	var signalDiv = this.controller.get('log-signal');
-	if (open) {
-		signalDiv.style.backgroundColor = "green";
-		signalDiv.innerHTML = "<img src='images/watch-ok.png'>";
-	} else {
-		signalDiv.style.backgroundColor = "red";
-		signalDiv.innerHTML = "<img src='images/watch-no.png'>";
-	}
+	this._refreshIcon(open);
 };
 
 DashboardAssistant.prototype.logInfo = function(logText, open) {
+	this._refreshIcon(open);
+};
+
+DashboardAssistant.prototype._refreshIcon = function(open) {
 	var signalDiv = this.controller.get('log-signal');
 	if (open) {
-		signalDiv.style.backgroundColor = "green";
-		signalDiv.innerHTML = "<img src='images/watch-ok.png'>";
+		signalDiv.removeClassName("disconnected");
+		signalDiv.addClassName("connected");
 	} else {
-		signalDiv.style.backgroundColor = "red";
-		signalDiv.innerHTML = "<img src='images/watch-no.png'>";
+		signalDiv.removeClassName("connected");
+		signalDiv.addClassName("disconnected");
 	}
 };
 

@@ -51,14 +51,28 @@
 	background: url(../images/dashboard/album-art-overlay.png) center center no-repeat;
 }
 
+/*
 .palm-dashboard-text,
 .dashboard-title {
     z-index: 1;
     position: relative;
     margin-right: 168px;
 }
+*/
 
 .optionDisabled {
 	background-color: green;
 	font-size: 28px;
+}
+
+.dashboard-conn-icon {
+	border-radius: 8px;
+}
+
+.dashboard-conn-icon.connected {
+	background: url(../images/watch-ok.png), green;
+}
+
+.dashboard-conn-icon.disconnected {
+	background: url(../images/watch-no.png), red;
 }
