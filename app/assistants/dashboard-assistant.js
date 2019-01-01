@@ -53,16 +53,14 @@ DashboardAssistant.prototype._refreshIcon = function(open) {
 };
 
 DashboardAssistant.prototype.considerForNotification = function(event) {
-	Mojo.Log.error("considerForNotification");
+
 };
 
 DashboardAssistant.prototype.activate = function(event) {
-	Mojo.Log.error("dashboard activate");
-	this.logInfo(null, lastLoggingConnectionStatus);
 };
 
 DashboardAssistant.prototype.deactivate = function(event) {
-	Mojo.Log.error("dashboard deactivate");
+
 };
 
 // Close the dashboard
