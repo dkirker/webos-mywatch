@@ -1,7 +1,7 @@
 var appIds;
 var PebbleModel = function(appMap) {
 	appIds = appMap;
-}
+};
 
 PebbleModel.prototype.CreatePebblePing = function() {
 	var id = this.PebbleCommands["PEBBLE_PING"];
@@ -59,9 +59,12 @@ PebbleModel.prototype.CreatePebblePhoneVersion30 = function() {
 	result.push(0x01);
 	result.push(0xff, 0xff, 0xff, 0xff); // -1
 	result.push(0x00, 0x00, 0x00, 0x00);
-	result.push(0x00, 0x00, 0x00, 0x02); // os?
-	result.push(0x02, 0x03, 0x08, 0x01);
-	result.push(0xaf, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+	result.push(0x00, 0x00, 0x00, 0x02); // os (PHONEVERSION_REMOTE_OS_ANDROID)
+	//result.push(0x02, 0x03, 0x08, 0x01);
+	result.push(2);
+	result.push(4, 4, 2);
+	//result.push(0xaf, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+	result.push(0xaf, 0x69, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
 	return this.CreatePebbleMsg(id, result);
 };
 
@@ -128,7 +131,7 @@ PebbleModel.prototype.CreatePebblePhoneinfo = function(caller, number) {
 	return result;
 };
 
-PebbleModel.prototype.CreatePebbleMusicinfo = function(artist, album, track) {
+/*PebbleModel.prototype.CreatePebbleMusicinfo = function(artist, album, track) {
 	// utf16->utf8 and not more than 255 chars
 	this.artist = artist;
 	this.album = album;
@@ -156,6 +159,106 @@ PebbleModel.prototype.CreatePebbleMusicinfo = function(artist, album, track) {
 	}
 	this.lastMusicPhoneWrite = (new Date()).getTime();
 	return result;
+};*/
+
+PebbleModel.prototype._CreatePebbleMusicBase = function(command, data) {
+	var result = [];
+	var id = this.PebbleCommands.PEBBLE_MUSIC_CONTROL;
+
+	result.push(command);
+	//result = result.concat(data);
+	for (var i=0; i < data.length; i++) {
+		result.push(data[i]);
+	}
+
+	return this.CreatePebbleMsg(id, result);
+};
+
+PebbleModel.prototype.CreatePebbleMusicinfo = function(artist, album, track, duration, trackNo, trackCount) {
+	var result = [];
+	this.musicState.artist = this.TruncateString(unescape(encodeURIComponent(artist)), 255);
+	this.musicState.album = this.TruncateString(unescape(encodeURIComponent(album)), 255);
+	this.musicState.track = this.TruncateString(unescape(encodeURIComponent(track)), 255);
+
+	result.push(this.musicState.artist.length);
+	for (var i = 0; i < this.musicState.artist.length; i++)
+		result.push(this.musicState.artist.charCodeAt(i));
+
+	result.push(this.musicState.album.length);
+	for (var i = 0; i < this.musicState.album.length; i++)
+		result.push(this.musicState.album.charCodeAt(i));
+
+	result.push(this.musicState.track.length);
+	for (var i = 0; i < this.musicState.track.length; i++)
+		result.push(this.musicState.track.charCodeAt(i));
+
+	if (duration != 0) result.push(16, 15, 4, 0); // duration
+	else result.push(0, 0, 0, 0);
+	result.push(0, 0); // trackNo
+	result.push(0, 0); // trackCount
+
+	return this._CreatePebbleMusicBase(this.PebbleMusic.ControlCommands.UPDATE_CURRENT_TRACK, result);
+};
+
+PebbleModel.prototype.CreatePebbleMusicInfoInit = function() {
+	var result = [];
+
+	result.push(0); // artist len
+	result.push(0); // album len
+	result.push(0); // track len
+	result.push(0, 0, 0, 0); // duration
+	result.push(0, 0); // trackNo
+	result.push(0, 0); // trackCount
+
+	return this._CreatePebbleMusicBase(this.PebbleMusic.ControlCommands.UPDATE_CURRENT_TRACK, result);
+};
+
+PebbleModel.prototype.CreatePebbleMusicState = function(state, position, rate, shuffle, repeat) {
+	var result = [];
+
+	result.push(state);
+	result.push(0, 0, 0, 0); // position
+	result.push(64, 0, 0, 0); // rate
+	result.push(shuffle);
+	result.push(repeat);
+
+	return this._CreatePebbleMusicBase(this.PebbleMusic.ControlCommands.UPDATE_PLAY_STATE, result);
+};
+
+PebbleModel.prototype.CreatePebbleMusicStateInit = function() {
+	var result = [];
+
+	result.push(4);
+	result.push(255, 255, 255, 255); // position
+	result.push(64, 0, 0, 0); // rate
+	result.push(0);
+	result.push(0);
+
+	return this._CreatePebbleMusicBase(this.PebbleMusic.ControlCommands.UPDATE_PLAY_STATE, result);
+};
+
+PebbleModel.prototype.CreatePebbleMusicVolumeState = function(volume) {
+	var result = [];
+
+	result.push(volume);
+
+	return this._CreatePebbleMusicBase(this.PebbleMusic.ControlCommands.UPDATE_VOLUME, result);
+};
+
+PebbleModel.prototype.CreatePebbleMusicPlayer = function(packageId, name) {
+        var result = [];
+	var safePackageId = this.TruncateString(unescape(encodeURIComponent(packageId)), 255);
+	var safeName = this.TruncateString(unescape(encodeURIComponent(name)), 255);
+
+	result.push(safePackageId.length);
+	for (var i = 0; i < safePackageId.length; i++)
+		result.push(safePackageId.charCodeAt(i));
+
+	result.push(safeName.length);
+	for (var i = 0; i < safeName.length; i++)
+		result.push(safeName.charCodeAt(i));
+
+	return this._CreatePebbleMusicBase(this.PebbleMusic.ControlCommands.UPDATE_PLAYER_INFO, result);
 };
 
 PebbleModel.prototype.CreatePebbleNotification = function(from, info) {
@@ -328,11 +431,14 @@ PebbleModel.prototype.CreatePebbleNotification30 = function(from, info, appid) {
 
 PebbleModel.prototype.CreatePebbleMsg = function(id, payload) {
 	var result = [];
+
 	result.push((payload.length >> 8) & 0xff, payload.length & 0xff);
 	result.push((id >> 8) & 0xff, id & 0xff);
+//	result = result.concat(payload);
 	for (var i=0; i<payload.length; i++) {
 		result.push(payload[i]);
 	}
+
 	return result;
 };
 
@@ -355,6 +461,7 @@ PebbleModel.prototype.PebbleCommands = {
 	PEBBLE_APP_MSG: 48,
 	PEBBLE_LAUNCHER: 49,
 	PEBBLE_APP_CUSTOMIZE: 50,
+	PEBBLE_APP_RUN_STATE: 52,
 	PEBBLE_LOGS: 2000,
 	PEBBLE_PING: 2001,
 	PEBBLE_DRAW: 2002,
@@ -374,6 +481,39 @@ PebbleModel.prototype.PebbleCommands = {
 	PEBBLE_NOTIFICATION_30: 11440,
 	PEBBLE_BLOBDB: 45531,
 	PEBBLE_PUT_BYTES: 48879,
+};
+
+PebbleModel.prototype.PebbleMusic = {
+	ControlCommands: {
+		UPDATE_CURRENT_TRACK: 16,
+		UPDATE_PLAY_STATE: 17,
+		UPDATE_VOLUME: 18,
+		UPDATE_PLAYER_INFO: 19
+	},
+	State: {
+		PAUSED: 0,
+		PLAYING: 1,
+		REWINDING: 2,
+		FASTFORWARDING: 3,
+		UNKNOWN: 4
+	},
+	Shuffle: {
+		UNKNOWN: 0,
+		OFF: 1,
+		ON: 2
+	},
+	Repeat: {
+		UNKNOWN: 0,
+		OFF: 1,
+		ONE: 2,
+		ALL: 3
+	}
+};
+
+PebbleModel.prototype.musicState = {
+	artist: "",
+	album: "",
+	track: ""
 };
 
 PebbleModel.prototype.PebbleColors = {
@@ -442,7 +582,7 @@ PebbleModel.prototype.PebbleColors = {
 	"PastelYellow" : "0b11111110",
 	"White" : "0b11111111",
 	"Clear" : "0b00000000"
-}
+};
 
 PebbleModel.prototype.PebbleIcons = {
 	"ICON_NOTIFICATION_GENERIC" : 1,
@@ -535,7 +675,7 @@ PebbleModel.prototype.PebbleIcons = {
 	"ICON_FACETIME_DURING" : 90,
 	"ICON_BLUESCREEN_OF_DEATH" : 91,
 	"ICON_START_MUSIC_PHONE" : 92
-}
+};
 
 //Helper methods
 PebbleModel.prototype.TruncateString = function(string, length) {
@@ -552,4 +692,4 @@ PebbleModel.prototype.genID = function() {
 	var c = (Math.floor(Math.random() * 0x10000) << 16) | Math.floor(Math.random() * 0x10000);
 	var d = (Math.floor(Math.random() * 0x10000) << 16) | Math.floor(Math.random() * 0x10000);
 	return [a,b,c,d];
-}
+};

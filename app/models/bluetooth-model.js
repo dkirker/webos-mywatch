@@ -138,7 +138,9 @@ BluetoothModel.prototype.sendInfo = function(info, wordwrap, icon, reason, appid
 		}
     }
 	logger("sendInfo accepted " + accepted, "info");
-	
+
+	music = (appid == "com.palm.app.musicplayer");
+
 	if (accepted) {
 		// remember what to display, then we don't need to extract it later
 		info = info ? info.replace(/\"/, "") : "";
@@ -181,7 +183,26 @@ BluetoothModel.prototype.sendText = function(watchType, instanceId, targetAddres
 			var data;
 			if (this.toSendEntry.music) {
 				var arr = this.toSendEntry.info.split("\n", 3);
-				data = pebbleHelper.CreatePebbleMusicinfo((arr.length > 0) ? arr[0] : "", (arr.length > 2) ? arr[2] : "", (arr.length > 1) ? arr[1] : "");
+
+				data = pebbleHelper.CreatePebbleMusicPlayer("com.amazon.mp3","Amazon Music"); // pebbleHelper.CreatePebbleMusicPlayer("com.palm.app.musicplayer","com.palm.app.musicplayer");
+				this.write(data, data.length, watchType, instanceId, targetAddress);
+
+				data = pebbleHelper.CreatePebbleMusicInfoInit();
+				this.write(data, data.length, watchType, instanceId, targetAddress);
+
+				data = pebbleHelper.CreatePebbleMusicVolumeState(0);
+				this.write(data, data.length, watchType, instanceId, targetAddress);
+
+				data = pebbleHelper.CreatePebbleMusicinfo((arr.length > 0) ? arr[0] : "", (arr.length > 2) ? arr[2] : "", (arr.length > 1) ? arr[1] : "", 0, 0, 0);
+				this.write(data, data.length, watchType, instanceId, targetAddress);
+				data = pebbleHelper.CreatePebbleMusicinfo((arr.length > 0) ? arr[0] : "", (arr.length > 2) ? arr[2] : "", (arr.length > 1) ? arr[1] : "", 9999, 0, 0);
+				this.write(data, data.length, watchType, instanceId, targetAddress);
+
+				data = pebbleHelper.CreatePebbleMusicStateInit();
+				this.write(data, data.length, watchType, instanceId, targetAddress);
+
+				data = pebbleHelper.CreatePebbleMusicState(pebbleHelper.PebbleMusic.State.PLAYING, 0, 1, pebbleHelper.PebbleMusic.Shuffle.UNKNOWN, pebbleHelper.PebbleMusic.Repeat.UNKNOWN);
+				
 			} else if (this.version == 3 || (this.version == 4)) {
 				var from = this.toSendEntry.from;
 				var info = this.toSendEntry.info;
@@ -655,7 +676,7 @@ BluetoothModel.prototype.readPortSuccess = function(objData, watchType, instance
 					var id = (data.charCodeAt(2) << 8) | data.charCodeAt(3);
 					var name = "unknown";
 					for (var cmd in pebbleHelper.PebbleCommands) {
-						if (cmd == id) {
+						if (pebbleHelper.PebbleCommands[cmd] == id) {
 							name = cmd;
 						}
 					}
@@ -692,7 +713,7 @@ BluetoothModel.prototype.readPortSuccess = function(objData, watchType, instance
 						} else {
 							reply = pebbleHelper.CreatePebbleTime();
 						}
-					} else if (id == pebbleHelper.PebbleCommands["MUSIC_CONTROL"]) {
+					} else if (id == pebbleHelper.PebbleCommands["PEBBLE_MUSIC_CONTROL"]) {
 						var action = data.charCodeAt(4);
 						logger("MusicControl:" + action);
 						if (action == 1) {
@@ -724,7 +745,7 @@ BluetoothModel.prototype.readPortSuccess = function(objData, watchType, instance
 							});
 						} else if (action == 8) {
 							// send now playing infos
-							reply = pebbleHelper.CreatePebbleMusicinfo(this.artist, this.album, this.track);
+							reply = pebbleHelper.CreatePebbleMusicinfo(pebbleHelper.musicState.artist, pebbleHelper.musicState.album, pebbleHelper.musicState.track);
 						} else {
 						}
 						this.lastMusicPhoneWrite = (new Date()).getTime();
@@ -744,6 +765,13 @@ BluetoothModel.prototype.readPortSuccess = function(objData, watchType, instance
 							});
 						}
 						this.lastMusicPhoneWrite = (new Date()).getTime();
+					} else if (id == pebbleHelper.PebbleCommands.PEBBLE_LAUNCHER) {
+						var command = data.charCodeAt(4);
+						var lastId = data.charCodeAt(5);
+						var uuid = [data.charCodeAt(6), data.charCodeAt(7), data.charCodeAt(8), data.charCodeAt(9)];
+					} else {
+						var command = data.charCodeAt(4);
+						logger("Unhandled command: " + command + " for " + name);
 					}
 				}
 			} else if (watchType == "LiveView") {
